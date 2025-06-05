@@ -10,6 +10,11 @@ The Cloud Document Analytics Platform is a comprehensive solution designed for e
 
 This project demonstrates the practical application of cloud computing concepts by implementing a serverless architecture with Supabase as the backend service provider, coupled with a responsive React frontend. The system showcases how distributed document processing can be achieved efficiently in the cloud while maintaining security, scalability, and performance.
 
+## Quick Links
+
+- **Live Demo**: [Cloud Document Analytics Service](https://cloud-based-document-analytics-serv.vercel.app/)
+- **GitHub Repository**: [Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service](https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service)
+
 ## 1. Introduction
 
 The Cloud Document Analytics Platform addresses the growing need for intelligent document management systems in educational, corporate, and research environments. As digital content continues to grow exponentially, traditional document management systems struggle with organizing, searching, and extracting insights from large document collections.
@@ -385,6 +390,11 @@ The application deployment follows a streamlined process:
    - Preview deployments for pull requests
    - Rollback capability for failed deployments
 
+### Accessing the Deployed Application
+
+The application is deployed and accessible at the following URL:
+- **Live Application**: [https://cloud-based-document-analytics-serv.vercel.app/](https://cloud-based-document-analytics-serv.vercel.app/)
+
 ## 9. User Support
 
 ### User Documentation
@@ -417,8 +427,8 @@ Common issues and their solutions are documented in the [Troubleshooting](#troub
 
 ### Source Code and Live Application
 
-- **Source Code**: [GitHub Repository](https://github.com/yourusername/cloud-docu-analyzer-nexus)
-- **Live Application**: [Cloud Document Analytics Platform](https://cloud-docu-analyzer-nexus.vercel.app)
+- **Source Code**: [GitHub Repository](https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service)
+- **Live Application**: [Cloud Document Analytics Platform](https://cloud-based-document-analytics-serv.vercel.app/)
 
 ## 10. Conclusion
 
