@@ -22,7 +22,7 @@ export const TypingAnimation = ({
   const [isPaused, setIsPaused] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
 
-  // Cursor blinking effect
+  // Enhanced cursor blinking effect with realistic timing
   useEffect(() => {
     const cursorInterval = setInterval(() => {
       setShowCursor(prev => !prev);
@@ -64,11 +64,11 @@ export const TypingAnimation = ({
     <span className={`inline-block ${className}`}>
       {currentText}
       <span 
-        className={`inline-block w-0.5 h-[1em] bg-current ml-1 transition-opacity duration-100 ${
+        className={`inline-block w-0.5 h-[1em] bg-current ml-1 transition-opacity duration-150 ${
           showCursor ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ 
-          animation: 'none', // Remove any conflicting animations
+          animation: 'none',
           verticalAlign: 'baseline'
         }}
       >

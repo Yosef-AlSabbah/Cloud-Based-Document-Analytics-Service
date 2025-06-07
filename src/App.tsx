@@ -70,10 +70,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
             <Route path="/dashboard" element={<PageTransition><Index /></PageTransition>} />
-            <Route path="/search" element={<PageTransition><Index initialTab="search" /></PageTransition>} />
-            <Route path="/upload" element={<PageTransition><Index initialTab="upload" /></PageTransition>} />
-            <Route path="/analytics" element={<PageTransition><Index initialTab="analytics" /></PageTransition>} />
-            <Route path="/stats" element={<PageTransition><Index initialTab="settings" /></PageTransition>} />
+            <Route path="/search" element={<PageTransition><Index /></PageTransition>} />
+            <Route path="/upload" element={<PageTransition><Index /></PageTransition>} />
+            <Route path="/analytics" element={<PageTransition><Index /></PageTransition>} />
+            <Route path="/stats" element={<PageTransition><Index /></PageTransition>} />
             <Route path="/auth" element={<PageTransition><Auth /></PageTransition>} />
             <Route path="/about" element={<PageTransition><About /></PageTransition>} />
             <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />

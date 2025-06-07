@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,36 @@ interface SearchFilters {
 
 const SearchInterface = ({ onSearch, searchQuery, filters }: SearchInterfaceProps) => {
   const [localQuery, setLocalQuery] = useState(searchQuery);
-  const [localFilters, setLocalFilters] = useState(filters);
+  const [localFilters, setLocalFilters] = useState(filters || { category: '', fileType: '', dateRange: '' });
   const [showFilters, setShowFilters] = useState(false);
 
+  // Auto-search when user types 3+ characters
+  useEffect(() => {
+    if (localQuery.length >= 3) {
+      const debounceTimer = setTimeout(() => {
+        console.log('Auto-searching with query:', localQuery);
+        onSearch(localQuery, localFilters);
+      }, 300); // 300ms debounce
+
+      return () => clearTimeout(debounceTimer);
+    } else if (localQuery.length === 0) {
+      // Clear search when query is empty
+      console.log('Clearing search results');
+      onSearch('', localFilters);
+    }
+  }, [localQuery, localFilters, onSearch]);
+
+  // Sync with parent props when they change
+  useEffect(() => {
+    setLocalQuery(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setLocalFilters(filters || { category: '', fileType: '', dateRange: '' });
+  }, [filters]);
+
   const handleSearch = () => {
+    console.log('Manual search triggered:', { localQuery, localFilters });
     onSearch(localQuery, localFilters);
   };
 
@@ -44,9 +70,12 @@ const SearchInterface = ({ onSearch, searchQuery, filters }: SearchInterfaceProp
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search documents..."
+              placeholder="Search documents... (type 3+ characters for auto-search)"
               value={localQuery}
-              onChange={(e) => setLocalQuery(e.target.value)}
+              onChange={(e) => {
+                console.log('Search input changed:', e.target.value);
+                setLocalQuery(e.target.value);
+              }}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="pl-10 bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-primary focus:border-primary"
             />
@@ -65,6 +94,13 @@ const SearchInterface = ({ onSearch, searchQuery, filters }: SearchInterfaceProp
             <Filter className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Auto-search indicator */}
+        {localQuery.length > 0 && localQuery.length < 3 && (
+          <div className="text-sm text-muted-foreground">
+            Type {3 - localQuery.length} more character{3 - localQuery.length !== 1 ? 's' : ''} for auto-search
+          </div>
+        )}
 
         {/* Active Filters */}
         {hasActiveFilters && (

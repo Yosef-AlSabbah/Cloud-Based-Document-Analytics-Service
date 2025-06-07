@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText, Loader2, AlertCircle, HelpCircle, Globe, Link } from "lucide-react";
@@ -29,12 +28,15 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
     if (acceptedFiles.length === 0) return;
 
     setIsUploading(true);
-    const processor = new DocumentProcessor();
 
     try {
       for (const file of acceptedFiles) {
         console.log(`Processing file: ${file.name}`);
-        await processor.processFile(file);
+        
+        // Process document using the static method
+        const processedDoc = await DocumentProcessor.processDocument(file);
+        const classification = await DocumentProcessor.classifyDocument(processedDoc.content, processedDoc.title);
+        await DocumentProcessor.uploadToSupabase(file, processedDoc, classification);
       }
 
       toast({
@@ -123,7 +125,6 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Provide helpful error context
         if (error.message.includes('Auth session missing')) {
           errorDetails = "Please make sure you're logged in and try again.";
         } else if (error.message.includes('timeout')) {
@@ -237,7 +238,6 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
                   </div>
                 </div>
 
-                {/* Help Section */}
                 <Collapsible open={showHelp} onOpenChange={setShowHelp}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-accent">
