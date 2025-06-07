@@ -15,3 +15,15 @@ export interface ClassificationResult {
   confidence: number;
   algorithm: string;
 }
+
+export interface Document {
+  id: string;
+  title: string;
+  content: string;
+  filename: string;
+  size: number;
+  type: string;
+  uploadDate: Date;
+  classification?: string;
+  confidence?: number;
+}

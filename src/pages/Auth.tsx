@@ -1,74 +1,97 @@
 
+/**
+ * Cloud Document Analytics Platform - Authentication Page
+ *
+ * @author Yousef M. Y. Al Sabbah
+ * @course Cloud and Distributed Systems
+ * @university Islamic University of Gaza
+ * @date June 7, 2025
+ */
+
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { FileText, Mail, Lock, User, ArrowRight, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { User } from "@supabase/supabase-js";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Auth() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const { toast } = useToast();
+const Auth = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
 
+  // Scroll to top on component mount
   useEffect(() => {
-    // Check current auth status
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        navigate('/');
-      }
-    });
+    window.scrollTo(0, 0);
+  }, []);
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        navigate('/');
+  // Check if user is already authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        navigate('/dashboard');
       }
-    });
-
-    return () => subscription.unsubscribe();
+    };
+    checkAuth();
   }, [navigate]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Sign up successful!",
-          description: "Please check your email to confirm your account.",
-        });
-      } else {
+      if (isLogin) {
+        // Sign in
         const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: formData.email,
+          password: formData.password,
         });
-        
+
         if (error) throw error;
-        
+
         toast({
           title: "Welcome back!",
-          description: "You have successfully signed in.",
+          description: "You have been signed in successfully.",
+        });
+        
+        navigate('/dashboard');
+      } else {
+        // Sign up
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
+
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`
+          }
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Account created!",
+          description: "Please check your email to verify your account.",
         });
       }
     } catch (error: any) {
@@ -78,78 +101,149 @@ export default function Auth() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isSignUp ? "Create your account" : "Sign in to your account"}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Access your cloud document analytics platform
-          </p>
-        </div>
-        
-        <Card className="p-8">
-          <form onSubmit={handleAuth} className="space-y-6">
-            <div>
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1"
-                placeholder="Enter your email"
-              />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900 transition-all duration-500 page-transition">
+      {/* Header */}
+      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-lg border-b border-white/20 dark:border-gray-700/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3 animate-slide-in-right">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg hover:scale-110 transition-transform duration-300">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Cloud Document Analytics
+                </h1>
+              </div>
             </div>
             
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? "Loading..." : isSignUp ? "Sign up" : "Sign in"}
-            </Button>
-          </form>
-          
-          <div className="mt-6">
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-blue-600 hover:text-blue-500 text-sm"
+            <div className="flex items-center space-x-4 animate-slide-in-left">
+              <ThemeToggle />
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/')}
+                className="flex items-center space-x-2 hover:bg-blue-50 dark:hover:bg-gray-800 transition-all duration-300"
               >
-                {isSignUp 
-                  ? "Already have an account? Sign in" 
-                  : "Don't have an account? Sign up"}
-              </button>
+                <Home className="h-4 w-4" />
+                <span>Home</span>
+              </Button>
             </div>
           </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex items-center justify-center min-h-[calc(100vh-80px)] p-6">
+        <Card className="w-full max-w-md p-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-2xl animate-scale-in hover:shadow-3xl transition-all duration-500">
+          <div className="text-center mb-8">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 animate-float">
+              <FileText className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {isLogin ? "Welcome Back" : "Create Account"}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300">
+              {isLogin ? "Sign in to your account" : "Get started with document analytics"}
+            </p>
+          </div>
+
+          <form onSubmit={handleAuth} className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email" className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 mb-2">
+                  <Mail className="h-4 w-4" />
+                  <span>Email</span>
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="form-enhanced focus-enhanced bg-white/50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 mb-2">
+                  <Lock className="h-4 w-4" />
+                  <span>Password</span>
+                </Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="form-enhanced focus-enhanced bg-white/50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              {!isLogin && (
+                <div>
+                  <Label htmlFor="confirmPassword" className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 mb-2">
+                    <Lock className="h-4 w-4" />
+                    <span>Confirm Password</span>
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="form-enhanced focus-enhanced bg-white/50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
+                    placeholder="Confirm your password"
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 btn-ripple btn-enhanced"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <span>{isLogin ? "Sign In" : "Create Account"}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 dark:text-gray-300">
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsLogin(!isLogin)}
+                className="ml-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold hover:bg-transparent p-0 h-auto transition-colors duration-200"
+              >
+                {isLogin ? "Sign up" : "Sign in"}
+              </Button>
+            </p>
+          </div>
         </Card>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+export default Auth;

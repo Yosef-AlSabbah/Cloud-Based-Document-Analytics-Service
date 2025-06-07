@@ -1,196 +1,53 @@
 
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { FileText, Clock, HardDrive, TrendingUp, Brain, Search, Upload } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { FileText, Upload, Calendar, TrendingUp } from "lucide-react";
 
-interface PerformanceMetric {
-  operation: string;
-  averageTime: number;
-  totalExecutions: number;
-  lastExecuted: string;
+interface AnalyticsDashboardProps {
+  documents: any[];
 }
 
-interface Document {
-  id: string;
-  name: string;
-  title?: string;
-  size: number;
-  upload_time: string;
-  type: string;
-  classification?: {
-    category: string;
-    subcategory: string;
-    confidence: number;
-  };
-}
+const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
+  // Data processing for charts
+  const totalDocuments = documents.length;
+  const totalSize = documents.reduce((sum, doc) => sum + (doc.size || 0), 0);
+  const avgSize = totalDocuments > 0 ? totalSize / totalDocuments : 0;
 
-interface Classification {
-  category: string;
-  subcategory: string;
-  confidence: number;
-}
-
-export const AnalyticsDashboard = () => {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [classifications, setClassifications] = useState<Classification[]>([]);
-  const [searchLogs, setSearchLogs] = useState<any[]>([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetric[]>([]);
-  const [totalSize, setTotalSize] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadAnalytics();
-    
-    // Set up real-time subscriptions
-    const documentsChannel = supabase
-      .channel('analytics-documents')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'documents'
-      }, () => {
-        loadAnalytics();
-      })
-      .subscribe();
-
-    const searchChannel = supabase
-      .channel('analytics-search')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'search_logs'
-      }, () => {
-        loadAnalytics();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(documentsChannel);
-      supabase.removeChannel(searchChannel);
-    };
-  }, []);
-
-  const loadAnalytics = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      // Load documents
-      const { data: docsData, error: docsError } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (docsError) throw docsError;
-
-      // Load classifications
-      const { data: classData, error: classError } = await supabase
-        .from('document_classifications')
-        .select('*');
-
-      if (classError) throw classError;
-
-      // Load search logs
-      const { data: searchData, error: searchError } = await supabase
-        .from('search_logs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (searchError) throw searchError;
-
-      setDocuments(docsData || []);
-      setClassifications(classData || []);
-      setSearchLogs(searchData || []);
-
-      const size = (docsData || []).reduce((total: number, doc: any) => total + doc.size, 0);
-      setTotalSize(size);
-
-      // Generate performance metrics
-      const avgSearchTime = searchData?.length > 0 
-        ? searchData.reduce((sum, log) => sum + log.search_time_ms, 0) / searchData.length 
-        : 0;
-
-      setPerformanceMetrics([
-        { 
-          operation: "Document Upload", 
-          averageTime: 1200, 
-          totalExecutions: docsData?.length || 0, 
-          lastExecuted: docsData?.[0]?.upload_time || new Date().toISOString()
-        },
-        { 
-          operation: "Text Search", 
-          averageTime: avgSearchTime, 
-          totalExecutions: searchData?.length || 0, 
-          lastExecuted: searchData?.[0]?.created_at || new Date().toISOString()
-        },
-        { 
-          operation: "Classification", 
-          averageTime: 2800, 
-          totalExecutions: classData?.length || 0, 
-          lastExecuted: classData?.[0]?.created_at || new Date().toISOString()
-        },
-        { 
-          operation: "Document Sorting", 
-          averageTime: 180, 
-          totalExecutions: searchData?.length || 0, 
-          lastExecuted: searchData?.[0]?.created_at || new Date().toISOString()
-        }
-      ]);
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      setLoading(false);
-    }
-  };
-
-  // Prepare data for charts
-  const documentTypeData = documents.reduce((acc, doc) => {
-    const type = doc.type.includes('pdf') ? 'PDF' : 
-                 doc.type.includes('word') ? 'Word' : 'Other';
+  // Document types distribution
+  const typeData = documents.reduce((acc, doc) => {
+    const type = doc.type || 'Unknown';
     acc[type] = (acc[type] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {});
 
-  const typeChartData = Object.entries(documentTypeData).map(([type, count]) => ({
-    name: type,
-    value: count
+  const pieData = Object.entries(typeData).map(([type, count]) => ({
+    name: type.toUpperCase(),
+    value: count as number
   }));
 
-  const classificationData = classifications.reduce((acc, classification) => {
-    acc[classification.category] = (acc[classification.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Upload trends (simulated data for demo)
+  const trendData = [
+    { month: 'Jan', uploads: 12 },
+    { month: 'Feb', uploads: 19 },
+    { month: 'Mar', uploads: 25 },
+    { month: 'Apr', uploads: 18 },
+    { month: 'May', uploads: 32 },
+    { month: 'Jun', uploads: 28 }
+  ];
 
-  const classificationChartData = Object.entries(classificationData).map(([category, count]) => ({
-    category,
-    count
+  // Category distribution
+  const categoryData = documents.reduce((acc, doc) => {
+    const category = doc.classification || 'Unclassified';
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {});
+
+  const barData = Object.entries(categoryData).map(([category, count]) => ({
+    category: category.length > 15 ? category.substring(0, 15) + '...' : category,
+    documents: count as number
   }));
 
-  const uploadTrendData = documents.reduce((acc, doc) => {
-    const date = new Date(doc.upload_time).toISOString().split('T')[0];
-    acc[date] = (acc[date] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const trendChartData = Object.entries(uploadTrendData)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-7) // Last 7 days
-    .map(([date, count]) => ({
-      date: new Date(date).toLocaleDateString(),
-      uploads: count
-    }));
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -200,246 +57,161 @@ export const AnalyticsDashboard = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatTime = (ms: number) => {
-    if (ms < 1000) return `${ms.toFixed(0)}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  if (loading) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">Loading analytics...</div>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Total Documents</p>
-              <p className="text-3xl font-bold text-blue-900">{documents.length}</p>
-            </div>
-            <FileText className="h-12 w-12 text-blue-600" />
-          </div>
+        <Card className="glass-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Total Documents</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{totalDocuments}</div>
+            <p className="text-xs text-muted-foreground">Documents in your collection</p>
+          </CardContent>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Total Storage</p>
-              <p className="text-3xl font-bold text-green-900">{formatBytes(totalSize)}</p>
-            </div>
-            <HardDrive className="h-12 w-12 text-green-600" />
-          </div>
+        <Card className="glass-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Total Size</CardTitle>
+            <Upload className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{formatBytes(totalSize)}</div>
+            <p className="text-xs text-muted-foreground">Storage used</p>
+          </CardContent>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Classified Docs</p>
-              <p className="text-3xl font-bold text-purple-900">{classifications.length}</p>
-            </div>
-            <Brain className="h-12 w-12 text-purple-600" />
-          </div>
+        <Card className="glass-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Average Size</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{formatBytes(avgSize)}</div>
+            <p className="text-xs text-muted-foreground">Per document</p>
+          </CardContent>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-orange-600">Total Searches</p>
-              <p className="text-3xl font-bold text-orange-900">{searchLogs.length}</p>
-            </div>
-            <Search className="h-12 w-12 text-orange-600" />
-          </div>
+        <Card className="glass-card border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-foreground">Categories</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{Object.keys(categoryData).length}</div>
+            <p className="text-xs text-muted-foreground">Document categories</p>
+          </CardContent>
         </Card>
       </div>
 
-      {/* Performance Metrics */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <Clock className="h-5 w-5 mr-2" />
-          Performance Metrics
-        </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            {performanceMetrics.map((metric, index) => (
-              <div key={metric.operation} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    {metric.operation.includes('Upload') && <Upload className="h-4 w-4 text-blue-600" />}
-                    {metric.operation.includes('Search') && <Search className="h-4 w-4 text-blue-600" />}
-                    {metric.operation.includes('Classification') && <Brain className="h-4 w-4 text-blue-600" />}
-                    {metric.operation.includes('Sorting') && <TrendingUp className="h-4 w-4 text-blue-600" />}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{metric.operation}</p>
-                    <p className="text-sm text-gray-600">{metric.totalExecutions} executions</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{formatTime(metric.averageTime)}</p>
-                  <p className="text-sm text-gray-600">avg time</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceMetrics}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="operation" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(value) => [formatTime(value as number), 'Average Time']} />
-                <Bar dataKey="averageTime" fill="#3b82f6" />
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Category Distribution */}
+        <Card className="glass-card border-border/50">
+          <CardHeader>
+            <CardTitle className="text-foreground">Documents by Category</CardTitle>
+            <CardDescription className="text-muted-foreground">Distribution of documents across categories</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="category" 
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    color: 'hsl(var(--popover-foreground))'
+                  }}
+                />
+                <Bar dataKey="documents" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-      </Card>
-
-      {/* Document Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Document Types */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Document Types Distribution</h3>
-          {typeChartData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={typeChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {typeChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No document type data available
-            </div>
-          )}
+          </CardContent>
         </Card>
 
-        {/* Classification Categories */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Classification Categories</h3>
-          {classificationChartData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={classificationChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              No classification data available
-            </div>
-          )}
+        {/* File Types */}
+        <Card className="glass-card border-border/50">
+          <CardHeader>
+            <CardTitle className="text-foreground">File Types</CardTitle>
+            <CardDescription className="text-muted-foreground">Distribution by file format</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    color: 'hsl(var(--popover-foreground))'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
         </Card>
       </div>
 
       {/* Upload Trends */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Document Upload Trends (Last 7 Days)</h3>
-        {trendChartData.length > 0 ? (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="uploads" stroke="#8b5cf6" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            No upload trend data available
-          </div>
-        )}
-      </Card>
-
-      {/* Storage Analysis */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Storage Analysis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <p className="text-2xl font-bold text-blue-900">{formatBytes(totalSize)}</p>
-            <p className="text-sm text-blue-600">Total Used Storage</p>
-          </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <p className="text-2xl font-bold text-green-900">
-              {documents.length > 0 ? formatBytes(Math.max(...documents.map(d => d.size))) : '0 B'}
-            </p>
-            <p className="text-sm text-green-600">Largest Document</p>
-          </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <p className="text-2xl font-bold text-purple-900">
-              {documents.length > 0 ? formatBytes(Math.min(...documents.map(d => d.size))) : '0 B'}
-            </p>
-            <p className="text-sm text-purple-600">Smallest Document</p>
-          </div>
-        </div>
-        
-        <div className="mt-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Storage Usage</span>
-            <span>{((totalSize / (100 * 1024 * 1024)) * 100).toFixed(1)}% of 100MB limit</span>
-          </div>
-          <Progress value={Math.min((totalSize / (100 * 1024 * 1024)) * 100, 100)} className="w-full" />
-        </div>
-      </Card>
-
-      {/* Recent Search Activity */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Recent Search Activity</h3>
-        {searchLogs.length > 0 ? (
-          <div className="space-y-3">
-            {searchLogs.slice(0, 5).map((log, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Search className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">"{log.query}"</p>
-                    <p className="text-sm text-gray-600">
-                      {log.results_count} results in {log.search_time_ms}ms
-                    </p>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {new Date(log.created_at).toLocaleString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            No search activity yet
-          </div>
-        )}
+      <Card className="glass-card border-border/50">
+        <CardHeader>
+          <CardTitle className="text-foreground">Upload Trends</CardTitle>
+          <CardDescription className="text-muted-foreground">Document uploads over time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis 
+                dataKey="month" 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={12}
+              />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--popover-foreground))'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="uploads" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(var(--primary))' }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
       </Card>
     </div>
   );
 };
+
+export default AnalyticsDashboard;

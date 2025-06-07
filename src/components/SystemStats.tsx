@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Cloud, Server, Cpu, HardDrive } from "lucide-react";
+import { Cloud, Server, Cpu, HardDrive, Activity, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SystemInfo {
@@ -133,56 +133,112 @@ export const SystemStats = () => {
 
   if (isLoading) {
     return (
-      <Card className="p-4 bg-blue-50/50 border-blue-200">
-        <div className="text-center">Loading system stats...</div>
+      <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl animate-pulse">
+        <div className="text-center text-gray-600 dark:text-gray-400">Loading system stats...</div>
       </Card>
     );
   }
 
-  return (
-    <Card className="p-4 bg-blue-50/50 border-blue-200">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <Cloud className="h-5 w-5 text-blue-600" />
-          <div className="text-sm">
-            <div className="font-semibold text-gray-900">{systemInfo.totalDocuments}</div>
-            <div className="text-gray-600">Documents</div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <HardDrive className="h-5 w-5 text-green-600" />
-          <div className="text-sm">
-            <div className="font-semibold text-gray-900">{formatBytes(systemInfo.totalStorage)}</div>
-            <div className="text-gray-600">Storage</div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Server className="h-5 w-5 text-purple-600" />
-          <div className="text-sm">
-            <div className="font-semibold text-gray-900">{systemInfo.searchQueries}</div>
-            <div className="text-gray-600">Searches (24h)</div>
-          </div>
-        </div>
+  const stats = [
+    {
+      icon: Cloud,
+      label: "Documents",
+      value: systemInfo.totalDocuments.toString(),
+      color: "text-blue-600",
+      bgColor: "bg-blue-100 dark:bg-blue-900/30"
+    },
+    {
+      icon: HardDrive,
+      label: "Storage",
+      value: formatBytes(systemInfo.totalStorage),
+      color: "text-green-600",
+      bgColor: "bg-green-100 dark:bg-green-900/30"
+    },
+    {
+      icon: Server,
+      label: "Searches (24h)",
+      value: systemInfo.searchQueries.toString(),
+      color: "text-purple-600",
+      bgColor: "bg-purple-100 dark:bg-purple-900/30"
+    },
+    {
+      icon: Zap,
+      label: "Avg Search",
+      value: `${systemInfo.averageSearchTime.toFixed(0)}ms`,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100 dark:bg-orange-900/30"
+    }
+  ];
 
-        <div className="flex items-center gap-2">
-          <Cpu className="h-5 w-5 text-orange-600" />
-          <div className="text-sm">
-            <div className="font-semibold text-gray-900">{systemInfo.averageSearchTime.toFixed(0)}ms</div>
-            <div className="text-gray-600">Avg Search</div>
-          </div>
+  return (
+    <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-500 animate-fade-in">
+      <div className="flex flex-wrap items-center justify-between gap-6">
+        {/* Main Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
+          {stats.map((stat, index) => (
+            <div 
+              key={stat.label}
+              className="flex items-center gap-3 animate-slide-in-right"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className={`p-3 rounded-xl ${stat.bgColor} transform transition-all duration-300 hover:scale-110`}>
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              </div>
+              <div>
+                <div className="font-bold text-lg text-gray-900 dark:text-white">{stat.value}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
+              </div>
+            </div>
+          ))}
         </div>
         
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
+        {/* Status Badge */}
+        <div className="flex items-center gap-4 animate-slide-in-left">
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 hover:scale-105 transition-transform duration-200">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
             Online
           </Badge>
+          
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Last sync: {systemInfo.lastSync.toLocaleTimeString()}
+          </div>
         </div>
-
-        <div className="text-xs text-gray-500">
-          Last sync: {systemInfo.lastSync.toLocaleTimeString()}
+      </div>
+      
+      {/* Performance Indicators */}
+      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="flex items-center gap-3">
+            <Activity className="h-4 w-4 text-blue-600" />
+            <div className="flex-1">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600 dark:text-gray-400">CPU Usage</span>
+                <span className="font-medium text-gray-900 dark:text-white">{systemInfo.cpuUsage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${systemInfo.cpuUsage}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Cpu className="h-4 w-4 text-purple-600" />
+            <div className="flex-1">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-gray-600 dark:text-gray-400">Memory Usage</span>
+                <span className="font-medium text-gray-900 dark:text-white">{systemInfo.memoryUsage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${systemInfo.memoryUsage}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Card>
