@@ -1,4 +1,3 @@
-
 /**
  * Cloud Document Analytics Platform - Main Dashboard
  *
@@ -15,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { FileText, Home, User, MessageCircle, LogOut, Upload, Search, BarChart3, Settings, ChevronDown } from "lucide-react";
-import { DocumentUpload } from "@/components/DocumentUpload";
+import DocumentUpload from "@/components/DocumentUpload";
 import { DocumentList } from "@/components/DocumentList";
 import { SearchInterface } from "@/components/SearchInterface";
 import { ClassificationPanel } from "@/components/ClassificationPanel";
