@@ -16,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { FileText, Home, User, MessageCircle, LogOut, Upload, Search, BarChart3, Settings, ChevronDown } from "lucide-react";
 import DocumentUpload from "@/components/DocumentUpload";
 import { DocumentList } from "@/components/DocumentList";
-import { SearchInterface } from "@/components/SearchInterface";
+import SearchInterface from "@/components/SearchInterface";
 import { ClassificationPanel } from "@/components/ClassificationPanel";
 import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import { SystemStats } from "@/components/SystemStats";
