@@ -27,9 +27,13 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Main dashboard component with full document management functionality
  */
-const Index = () => {
+interface IndexProps {
+  initialTab?: string;
+}
+
+const Index = ({ initialTab = "overview" }: IndexProps) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
 
@@ -37,6 +41,13 @@ const Index = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Set active tab based on initialTab prop
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Get current user
   useEffect(() => {
