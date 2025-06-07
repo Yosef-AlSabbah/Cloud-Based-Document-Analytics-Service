@@ -18,7 +18,7 @@ import DocumentUpload from "@/components/DocumentUpload";
 import { DocumentList } from "@/components/DocumentList";
 import SearchInterface from "@/components/SearchInterface";
 import { ClassificationPanel } from "@/components/ClassificationPanel";
-import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import { SystemStats } from "@/components/SystemStats";
 import { PersistentStats } from "@/components/PersistentStats";
 import { ThemeToggle } from "@/components/ThemeToggle";
