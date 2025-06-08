@@ -7,12 +7,13 @@
  * @date June 1, 2025
  *
  * Document Processor Utility
- * Central system for document processing, text extraction, and classification
+ * Central system for document processing, text extraction, and AI-powered classification
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import { DocumentTitleExtractor } from "./document-title-extractor";
 import { ProcessedDocument, ClassificationResult } from "./types";
+import { AdvancedClassificationService, ClassificationConfig } from "@/services/AdvancedClassificationService";
 import * as pdfjs from 'pdfjs-dist';
 import { getDocument, GlobalWorkerOptions, PDFDocumentProxy } from 'pdfjs-dist';
 import mammoth from 'mammoth';
@@ -21,21 +22,23 @@ import mammoth from 'mammoth';
 GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 /**
- * DocumentProcessor class
- * Handles the extraction, processing, and classification of document content
- * Supports multiple document formats (PDF, DOCX, DOC)
+ * Enhanced DocumentProcessor class with AI/ML-powered classification
+ * Supports multiple state-of-the-art classification approaches
  */
 export class DocumentProcessor {
     /**
-     * Main document processing method - now uses Python-style title extraction
+     * Main document processing method with advanced AI classification
      */
-    static async processDocument(file: File): Promise<ProcessedDocument> {
+    static async processDocument(
+        file: File, 
+        classificationConfig?: ClassificationConfig
+    ): Promise<ProcessedDocument> {
         console.log(`🔍 Processing document: ${file.name}`);
 
         // Extract title using the Python-style approach
         let title = await DocumentTitleExtractor.getDocumentTitle(file);
 
-        // If no title extracted, fall back to filename (same as Python fallback)
+        // If no title extracted, fall back to filename
         if (!title) {
             console.log("⚠️ No title found, using filename as fallback");
             title = this.extractTitleFromFilename(file.name);
@@ -45,6 +48,7 @@ export class DocumentProcessor {
         let metadata = { wordCount: 0, language: 'en', pages: 0 };
 
         try {
+            // ... keep existing code (content extraction logic remains the same)
             if (file.type.includes('pdf')) {
                 console.log("📄 Processing PDF content");
                 const pdfData = await this.extractContentFromPDF(file);
@@ -92,12 +96,40 @@ export class DocumentProcessor {
     }
 
     /**
-     * Enhanced document classification using improved keyword analysis
+     * Advanced AI-powered document classification
      */
-    static async classifyDocument(content: string, title: string): Promise<ClassificationResult> {
-        console.log('🏷️ Classifying document:', title);
+    static async classifyDocument(
+        content: string, 
+        title: string,
+        config: ClassificationConfig = { method: 'hybrid' }
+    ): Promise<ClassificationResult> {
+        console.log(`🤖 Starting AI-powered classification with method: ${config.method}`);
 
-        // Enhanced classification with better keyword matching and scoring
+        try {
+            // Use the advanced classification service
+            const result = await AdvancedClassificationService.classifyDocument(title, content, config);
+            
+            console.log(`✅ AI Classification completed:`, {
+                category: result.category,
+                subcategory: result.subcategory,
+                confidence: `${(result.confidence * 100).toFixed(1)}%`,
+                algorithm: result.algorithm,
+                keywords: result.keywords?.length || 0
+            });
+
+            return result;
+        } catch (error) {
+            console.error('❌ AI classification failed, falling back to enhanced keywords:', error);
+            
+            // Fallback to enhanced keyword analysis
+            return await this.fallbackClassification(content, title);
+        }
+    }
+
+    /**
+     * Enhanced fallback classification method
+     */
+    private static async fallbackClassification(content: string, title: string): Promise<ClassificationResult> {
         const keywords = {
             academic: {
                 primary: ['research', 'study', 'analysis', 'methodology', 'conclusion', 'abstract', 'findings', 'academic', 'university', 'journal', 'thesis', 'dissertation', 'paper'],
@@ -114,6 +146,10 @@ export class DocumentProcessor {
             legal: {
                 primary: ['contract', 'agreement', 'law', 'legal', 'clause', 'terms', 'policy', 'compliance', 'regulation', 'jurisdiction', 'statute'],
                 secondary: ['liability', 'intellectual property', 'copyright', 'patent', 'license', 'privacy', 'gdpr']
+            },
+            medical: {
+                primary: ['patient', 'medical', 'health', 'diagnosis', 'treatment', 'clinical', 'pharmaceutical', 'therapy', 'symptoms', 'healthcare'],
+                secondary: ['medicine', 'doctor', 'hospital', 'disease', 'surgery', 'prescription', 'diagnostic', 'therapeutic']
             }
         };
 
@@ -121,7 +157,8 @@ export class DocumentProcessor {
             academic: ['Computer Science', 'Engineering', 'Mathematics', 'Natural Sciences', 'Social Sciences', 'Research Paper', 'Thesis'],
             technical: ['Software Architecture', 'AI/ML', 'Web Development', 'System Design', 'Database', 'API Documentation'],
             business: ['Strategy', 'Marketing', 'Finance', 'Operations', 'Human Resources', 'Business Plan'],
-            legal: ['Contracts', 'Policies', 'Compliance', 'Intellectual Property', 'Corporate Law', 'Privacy Policy']
+            legal: ['Contracts', 'Policies', 'Compliance', 'Intellectual Property', 'Corporate Law', 'Privacy Policy'],
+            medical: ['Clinical Study', 'Medical Report', 'Patient Record', 'Pharmaceutical Research', 'Healthcare Policy']
         };
 
         const text = (title + ' ' + content).toLowerCase();
@@ -186,30 +223,22 @@ export class DocumentProcessor {
             } else if (text.includes('web') || text.includes('frontend') || text.includes('backend')) {
                 subcategory = 'Web Development';
             }
-        } else if (bestCategory === 'business') {
-            if (text.includes('plan') || text.includes('strategy')) {
-                subcategory = 'Strategy';
-            } else if (text.includes('financial') || text.includes('budget')) {
-                subcategory = 'Finance';
-            } else if (text.includes('marketing') || text.includes('sales')) {
-                subcategory = 'Marketing';
-            }
-        } else if (bestCategory === 'legal') {
-            if (text.includes('privacy') || text.includes('gdpr')) {
-                subcategory = 'Privacy Policy';
-            } else if (text.includes('contract') || text.includes('agreement')) {
-                subcategory = 'Contracts';
-            }
         }
 
-        console.log(`📊 Classification scores:`, scores);
+        // Extract relevant keywords
+        const relevantKeywords = keywords[bestCategory as keyof typeof keywords]?.primary
+            .filter(keyword => text.includes(keyword))
+            .slice(0, 5) || [];
+
+        console.log(`📊 Fallback classification scores:`, scores);
         console.log(`🏆 Best category: ${bestCategory} (${subcategory}) - Confidence: ${(confidence * 100).toFixed(1)}%`);
 
         return {
             category: bestCategory.charAt(0).toUpperCase() + bestCategory.slice(1),
             subcategory,
             confidence: Math.round(confidence * 100) / 100,
-            algorithm: 'Enhanced Keyword Analysis v2.0'
+            algorithm: 'Enhanced Keyword Analysis (Fallback)',
+            keywords: relevantKeywords
         };
     }
 

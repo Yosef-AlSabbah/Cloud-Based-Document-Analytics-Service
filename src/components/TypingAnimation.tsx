@@ -61,14 +61,11 @@ export const TypingAnimation = ({
   }, [currentText, isDeleting, isPaused, currentWordIndex, words, speed, deleteSpeed, pauseTime]);
 
   return (
-    <span className={`inline-block ${className}`}>
+    <span className={`inline-block select-none ${className}`}>
       {currentText}
       <span 
-        className={`inline-block w-0.5 h-[1em] bg-current ml-1 transition-opacity duration-150 ${
-          showCursor ? 'opacity-100' : 'opacity-0'
-        }`}
+        className={`inline-block w-0.5 h-[1em] bg-current ml-1 animate-pulse`}
         style={{ 
-          animation: 'none',
           verticalAlign: 'baseline'
         }}
       >

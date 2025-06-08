@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import DocumentUpload from "@/components/DocumentUpload";
 import { DocumentList } from "@/components/DocumentList";
@@ -9,6 +8,8 @@ import { SystemStats } from "@/components/SystemStats";
 import { PersistentStats } from "@/components/PersistentStats";
 import QuickActions from "./QuickActions";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Document } from "@/utils/types";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -32,12 +33,21 @@ const DashboardContent = ({
   setDocuments
 }: DashboardContentProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<Document[]>([]);
 
   // Fetch documents and their classifications
   const fetchDocuments = async () => {
     try {
       setIsLoading(true);
       console.log('Fetching documents with classifications...');
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.warn('No authenticated user found');
+        setIsLoading(false);
+        return;
+      }
       
       const { data: documentsData, error: docsError } = await supabase
         .from('documents')
@@ -50,6 +60,7 @@ const DashboardContent = ({
             algorithm
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (docsError) {
@@ -59,18 +70,84 @@ const DashboardContent = ({
 
       if (documentsData) {
         console.log('Fetched documents:', documentsData.length);
-        setDocuments(documentsData);
+        
+        // Convert to Document interface and handle date conversions
+        const processedDocs: Document[] = documentsData.map(doc => ({
+          id: doc.id,
+          title: doc.title || doc.name || 'Untitled Document',
+          content: doc.content || '',
+          filename: doc.name,
+          size: doc.size,
+          type: doc.type,
+          uploadDate: new Date(doc.created_at),
+          classification: doc.document_classifications?.length > 0 
+            ? doc.document_classifications[0].category 
+            : 'Unclassified',
+          confidence: doc.document_classifications?.length > 0 
+            ? doc.document_classifications[0].confidence 
+            : 0,
+          document_classifications: doc.document_classifications,
+          created_at: doc.created_at,
+          updated_at: doc.updated_at,
+          user_id: doc.user_id
+        }));
+        
+        setDocuments(processedDocs);
+        
+        // Show notification
+        if (documentsData.length > 0) {
+          toast.info(`Loaded ${documentsData.length} documents`);
+        }
       }
     } catch (error) {
       console.error('Error in fetchDocuments:', error);
+      toast.error('Failed to load documents');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Initial fetch and refresh on tab change
+  // Initial fetch and set up real-time subscriptions
   useEffect(() => {
     fetchDocuments();
+
+    // Set up real-time subscription for document changes
+    const documentsChannel = supabase.channel('document-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'documents'
+      }, (payload) => {
+        console.log('Document change detected:', payload);
+        fetchDocuments(); // Refresh documents on any change
+        
+        if (payload.eventType === 'INSERT') {
+          toast.success('New document added');
+        } else if (payload.eventType === 'UPDATE') {
+          toast.info('Document updated');
+        } else if (payload.eventType === 'DELETE') {
+          toast.info('Document removed');
+        }
+      })
+      .subscribe();
+    
+    // Set up real-time subscription for classification updates
+    const classificationsChannel = supabase.channel('classification-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'document_classifications'
+      }, () => {
+        console.log('Classification change detected, updating documents...');
+        fetchDocuments(); // Refresh documents with new classifications
+        toast.success('Document classification updated');
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(documentsChannel);
+      supabase.removeChannel(classificationsChannel);
+    };
   }, [setDocuments]);
 
   const handleUploadComplete = () => {
@@ -82,18 +159,11 @@ const DashboardContent = ({
     console.log('Search handler called:', { query, filters });
     setSearchQuery(query);
     setSearchFilters(filters);
-    
-    // Log search activity
-    if (query.length >= 3) {
-      supabase.from('search_logs').insert({
-        query,
-        results_count: 0, // Will be updated when results are processed
-        search_time_ms: 0,
-        user_id: 'anonymous' // Update with actual user ID when auth is implemented
-      }).then(({ error }) => {
-        if (error) console.error('Error logging search:', error);
-      });
-    }
+  };
+
+  const handleSearchResults = (results: Document[]) => {
+    console.log('Search results received:', results.length);
+    setSearchResults(results);
   };
 
   const renderTabContent = () => {
@@ -103,10 +173,10 @@ const DashboardContent = ({
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-foreground mb-4 no-select">
-                Dashboard Overview
+                Cloud Document Analytics Dashboard
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Welcome to your document analytics dashboard. Monitor your uploads, search activity, and system performance.
+                Welcome to your Cloud Document Analytics dashboard. Monitor your uploads, search activity, and system performance.
               </p>
             </div>
 
@@ -155,8 +225,6 @@ const DashboardContent = ({
               searchQuery={searchQuery}
               filters={searchFilters}
             />
-            
-            <DocumentList />
           </div>
         );
         
@@ -208,6 +276,13 @@ const DashboardContent = ({
     <main className="p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <PersistentStats />
+        
+        {isLoading && activeTab !== "analytics" && (
+          <div className="flex items-center justify-center p-4 mb-6 bg-muted/50 rounded-lg animate-pulse">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary mr-3"></div>
+            <span className="text-muted-foreground">Loading data...</span>
+          </div>
+        )}
         
         <div className="transform transition-all duration-500 animate-float">
           {renderTabContent()}

@@ -8,46 +8,112 @@ interface AnalyticsDashboardProps {
 }
 
 const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
+  // Helper function to convert MIME types to human-readable formats
+  const formatFileType = (mimeType: string): string => {
+    const typeMap: { [key: string]: string } = {
+      'application/pdf': 'PDF',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+      'application/msword': 'DOC',
+      'text/plain': 'TXT',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+      'application/vnd.ms-excel': 'XLS',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+      'application/vnd.ms-powerpoint': 'PPT',
+      'image/jpeg': 'JPEG',
+      'image/png': 'PNG',
+      'image/gif': 'GIF',
+      'application/zip': 'ZIP',
+      'application/x-rar-compressed': 'RAR'
+    };
+    
+    return typeMap[mimeType] || mimeType.split('/').pop()?.toUpperCase() || 'Unknown';
+  };
+
+  // Helper function to get category from classification or infer from document
+  const getDocumentCategory = (doc: any): string => {
+    // First check if document has classification
+    if (doc.document_classifications && doc.document_classifications.length > 0) {
+      return doc.document_classifications[0].category;
+    }
+    
+    // If no classification, try to infer from title/content keywords
+    const title = (doc.title || '').toLowerCase();
+    const content = (doc.content || '').toLowerCase();
+    const text = `${title} ${content}`;
+    
+    if (text.includes('financial') || text.includes('budget') || text.includes('invoice') || text.includes('payment')) {
+      return 'Business & Finance';
+    } else if (text.includes('technical') || text.includes('software') || text.includes('code') || text.includes('programming')) {
+      return 'Technology';
+    } else if (text.includes('research') || text.includes('study') || text.includes('analysis') || text.includes('academic')) {
+      return 'Research & Academic';
+    } else if (text.includes('legal') || text.includes('contract') || text.includes('agreement') || text.includes('policy')) {
+      return 'Legal & Compliance';
+    } else if (text.includes('report') || text.includes('summary') || text.includes('meeting') || text.includes('minutes')) {
+      return 'Reports & Documentation';
+    } else {
+      return 'General';
+    }
+  };
+
   // Data processing for charts
   const totalDocuments = documents.length;
   const totalSize = documents.reduce((sum, doc) => sum + (doc.size || 0), 0);
   const avgSize = totalDocuments > 0 ? totalSize / totalDocuments : 0;
 
-  // Document types distribution
+  // Document types distribution with human-readable formats
   const typeData = documents.reduce((acc, doc) => {
-    const type = doc.type || 'Unknown';
+    const type = formatFileType(doc.type || 'Unknown');
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {});
 
   const pieData = Object.entries(typeData).map(([type, count]) => ({
-    name: type.toUpperCase(),
+    name: type,
     value: count as number
   }));
 
-  // Upload trends (simulated data for demo)
-  const trendData = [
-    { month: 'Jan', uploads: 12 },
-    { month: 'Feb', uploads: 19 },
-    { month: 'Mar', uploads: 25 },
-    { month: 'Apr', uploads: 18 },
-    { month: 'May', uploads: 32 },
-    { month: 'Jun', uploads: 28 }
-  ];
+  // Upload trends (generate from actual upload dates)
+  const generateTrendData = () => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const trendData = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      const uploadsInMonth = documents.filter(doc => {
+        const docDate = new Date(doc.created_at || doc.upload_time);
+        const docMonthKey = `${docDate.getFullYear()}-${String(docDate.getMonth() + 1).padStart(2, '0')}`;
+        return docMonthKey === monthKey;
+      }).length;
+      
+      trendData.push({
+        month: monthNames[date.getMonth()],
+        uploads: uploadsInMonth
+      });
+    }
+    
+    return trendData;
+  };
 
-  // Category distribution
+  const trendData = generateTrendData();
+
+  // Category distribution with improved classification
   const categoryData = documents.reduce((acc, doc) => {
-    const category = doc.classification || 'Unclassified';
+    const category = getDocumentCategory(doc);
     acc[category] = (acc[category] || 0) + 1;
     return acc;
   }, {});
 
   const barData = Object.entries(categoryData).map(([category, count]) => ({
     category: category.length > 15 ? category.substring(0, 15) + '...' : category,
+    fullCategory: category,
     documents: count as number
   }));
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -55,6 +121,26 @@ const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background p-3 border border-border rounded-md shadow-md">
+          <p className="text-sm font-medium text-foreground">{payload[0].name || label}</p>
+          <p className="text-xs text-muted-foreground">
+            {payload[0].dataKey}: {payload[0].value}
+          </p>
+          {payload[0].payload?.fullCategory && (
+            <p className="text-xs text-muted-foreground">
+              {payload[0].payload.fullCategory}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -124,14 +210,7 @@ const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
                   fontSize={12}
                 />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    color: 'hsl(var(--popover-foreground))'
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="documents" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -161,14 +240,7 @@ const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    color: 'hsl(var(--popover-foreground))'
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -191,14 +263,7 @@ const AnalyticsDashboard = ({ documents }: AnalyticsDashboardProps) => {
                 fontSize={12}
               />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  color: 'hsl(var(--popover-foreground))'
-                }}
-              />
+              <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
                 dataKey="uploads" 

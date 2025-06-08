@@ -9,9 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DocumentProcessor } from "@/utils/DocumentProcessor";
+import { ClassificationConfig } from "@/services/AdvancedClassificationService";
 
 interface DocumentUploadProps {
   onUploadComplete: () => void;
@@ -22,6 +24,7 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
   const [isScraping, setIsScraping] = useState(false);
   const [scrapingUrl, setScrapingUrl] = useState("");
   const [showHelp, setShowHelp] = useState(false);
+  const [classificationMethod, setClassificationMethod] = useState<ClassificationConfig['method']>('hybrid');
   const { toast } = useToast();
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -33,15 +36,22 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
       for (const file of acceptedFiles) {
         console.log(`Processing file: ${file.name}`);
         
-        // Process document using the static method
+        // Process document using the enhanced processor
         const processedDoc = await DocumentProcessor.processDocument(file);
-        const classification = await DocumentProcessor.classifyDocument(processedDoc.content, processedDoc.title);
+        
+        // Use advanced AI classification with selected method
+        const classification = await DocumentProcessor.classifyDocument(
+          processedDoc.content, 
+          processedDoc.title,
+          { method: classificationMethod }
+        );
+        
         await DocumentProcessor.uploadToSupabase(file, processedDoc, classification);
       }
 
       toast({
         title: "Upload successful",
-        description: `Successfully uploaded ${acceptedFiles.length} file(s)`,
+        description: `Successfully uploaded and classified ${acceptedFiles.length} file(s) using ${classificationMethod} AI`,
       });
 
       onUploadComplete();
@@ -55,7 +65,7 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
     } finally {
       setIsUploading(false);
     }
-  }, [toast, onUploadComplete]);
+  }, [toast, onUploadComplete, classificationMethod]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -154,10 +164,34 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
         <CardHeader>
           <CardTitle className="text-foreground">Upload Documents</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Add documents to your collection via file upload or web scraping
+            Add documents to your collection with AI-powered classification
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* AI Classification Method Selection */}
+          <div className="mb-6 p-4 bg-muted/30 rounded-lg">
+            <Label htmlFor="classification-method" className="text-sm font-medium mb-2 block">
+              AI Classification Method
+            </Label>
+            <Select value={classificationMethod} onValueChange={(value) => setClassificationMethod(value as ClassificationConfig['method'])}>
+              <SelectTrigger id="classification-method">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hybrid">Hybrid AI (Recommended - Fast & Accurate)</SelectItem>
+                <SelectItem value="openai">OpenAI GPT-4 (Requires API Key)</SelectItem>
+                <SelectItem value="huggingface">Hugging Face Transformers (Requires API Key)</SelectItem>
+                <SelectItem value="transformer">Browser Transformers (Experimental)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-2">
+              {classificationMethod === 'hybrid' && 'Uses advanced keyword analysis with structural features - no API key required'}
+              {classificationMethod === 'openai' && 'Uses OpenAI GPT models for highest accuracy - API key required in Supabase secrets'}
+              {classificationMethod === 'huggingface' && 'Uses open-source transformer models - API key required in Supabase secrets'}
+              {classificationMethod === 'transformer' && 'Runs transformer models in your browser - slower but private'}
+            </p>
+          </div>
+
           <Tabs defaultValue="upload" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted">
               <TabsTrigger value="upload" className="data-[state=active]:bg-background data-[state=active]:text-foreground">
@@ -196,7 +230,7 @@ const DocumentUpload = ({ onUploadComplete }: DocumentUploadProps) => {
               {isUploading && (
                 <div className="flex items-center justify-center p-4">
                   <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
-                  <span className="text-foreground">Processing files...</span>
+                  <span className="text-foreground">Processing and classifying files with AI...</span>
                 </div>
               )}
             </TabsContent>
