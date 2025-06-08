@@ -1,3 +1,9 @@
+// -------------------------------------------------------------
+// Cloud-Based-Document-Analytics-Service
+// Author: Yousef M. Y. Al Sabbah
+// https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service
+// -------------------------------------------------------------
+
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, FileText, Loader2, AlertCircle, HelpCircle, Globe, Link } from "lucide-react";

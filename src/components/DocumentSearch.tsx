@@ -1,3 +1,9 @@
+// -------------------------------------------------------------
+// Cloud-Based-Document-Analytics-Service
+// Author: Yousef M. Y. Al Sabbah
+// https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service
+// -------------------------------------------------------------
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -685,4 +691,3 @@ const DocumentSearch = ({ documents, onSearchResults }: DocumentSearchProps) => 
 };
 
 export default DocumentSearch;
-

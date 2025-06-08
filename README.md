@@ -1,473 +1,255 @@
-# Cloud Document Analytics Platform
+# ☁️ Cloud Document Analytics Platform
 
-> Advanced cloud-based document analytics system for searching, sorting, and classifying documents using machine learning algorithms
-
-![Platform Preview](https://via.placeholder.com/800x400/3B82F6/FFFFFF?text=Cloud+Document+Analytics)
-
-## 📑 Abstract
-
-The Cloud Document Analytics Platform is a comprehensive solution designed for efficient document management, analysis, and classification in cloud environments. Built with modern web technologies and leveraging cloud-native services, this platform enables users to extract meaningful insights from various document formats through advanced search capabilities, intelligent classification, and detailed analytics.
-
-This project demonstrates the practical application of cloud computing concepts by implementing a serverless architecture with Supabase as the backend service provider, coupled with a responsive React frontend. The system showcases how distributed document processing can be achieved efficiently in the cloud while maintaining security, scalability, and performance.
-
-## 1. Introduction
-
-The Cloud Document Analytics Platform addresses the growing need for intelligent document management systems in educational, corporate, and research environments. As digital content continues to grow exponentially, traditional document management systems struggle with organizing, searching, and extracting insights from large document collections.
-
-This platform adopts a cloud-first development methodology, leveraging serverless architecture patterns to minimize operational overhead while maximizing scalability. By utilizing Supabase's Backend-as-a-Service (BaaS) capabilities, the system achieves a separation of concerns between frontend and backend components while maintaining robust data security through Row Level Security policies. The development process followed an iterative approach with continuous integration and deployment practices, enabling rapid feature development and refinement.
-
-## 2. Cloud Software Program/Service Requirements
-
-### User Stories
-
-- As a researcher, I want to upload multiple document formats so that I can analyze documents regardless of their source.
-- As a student, I want to search within document content so that I can quickly find relevant information.
-- As a teacher, I want to categorize documents automatically so that I can maintain an organized collection.
-- As an analyst, I want to visualize document metrics so that I can understand the composition of my document collection.
-- As a content collector, I want to scrape web pages for content so that I can build my document repository efficiently.
-- As a mobile user, I want a responsive interface so that I can access my documents from any device.
-
-### Use Cases
-
-1. **Document Management**:
-   - Upload documents (PDF, DOC, DOCX)
-   - View document metadata
-   - Delete documents
-   - Download documents
-
-2. **Content Analysis**:
-   - Full-text search with relevance scoring
-   - Metadata extraction
-   - Content summarization
-   - Classification by content type
-
-3. **Web Scraping**:
-   - URL input for content extraction
-   - Automatic document generation from web content
-   - Scheduled scraping of specified sources
-
-4. **Analytics**:
-   - Document type distribution
-   - Upload frequency trends
-   - Search term analytics
-   - Classification accuracy metrics
-
-## 3. Software Architecture and Design
-
-### Architecture Diagram
-
-```
-┌─────────────────┐     ┌───────────────────────┐     ┌────────────────────┐
-│                 │     │                       │     │                    │
-│  React Frontend ├─────┤ Supabase BaaS Layer   ├─────┤ Edge Functions    │
-│  (Vite + TS)    │     │ (Auth, DB, Storage)   │     │ (Web Scraper)     │
-│                 │     │                       │     │                    │
-└────────┬────────┘     └───────────┬───────────┘     └────────────────────┘
-         │                          │
-         │                          │
-┌────────▼──────────┐     ┌─────────▼───────────┐
-│                   │     │                     │
-│  UI Components    │     │  PostgreSQL DB      │
-│  (Shadcn/UI)      │     │  (Document Store)   │
-│                   │     │                     │
-└───────────────────┘     └─────────────────────┘
-```
-
-### Component Design
-
-The system is designed with several key functional components:
-
-1. **Document Processing Pipeline**:
-   - File upload handler with type validation
-   - Content extraction module for different document formats
-   - Metadata parser for capturing document properties
-
-2. **Search Algorithm**:
-   - Tokenization and normalization of document content
-   - Inverted index for efficient term matching
-   - TF-IDF based relevance scoring system
-   - Fuzzy matching capabilities for handling typos
-
-3. **Classification System**:
-   - Feature extraction from document content and metadata
-   - Rule-based classification for common document types
-   - Category matching based on content analysis
-   - User feedback loop for improving classification accuracy
-
-4. **Web Scraping Service**:
-   - URL validation and sanitization
-   - HTML parsing and content extraction
-   - Document conversion from web content
-   - Rate limiting to prevent abuse
-
-### Database Design
-
-The system uses a PostgreSQL database (provided by Supabase) with the following schema:
-
-```sql
--- Documents table
-CREATE TABLE public.documents (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users NOT NULL,
-  name TEXT NOT NULL,
-  title TEXT,
-  content TEXT,
-  file_path TEXT,
-  size BIGINT,
-  type TEXT,
-  classification TEXT,
-  relevance_score DECIMAL,
-  upload_time TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-```
-
-### User Interface Design
-
-The UI is designed with a focus on usability and aesthetics:
-
-- **Dashboard Layout**: Card-based interface showing document statistics and recent uploads
-- **Search Interface**: Prominent search bar with filtering options and result highlighting
-- **Upload Component**: Drag-and-drop interface with progress indication
-- **Document List**: Sortable and filterable list with action buttons
-- **Classification Panel**: Visual representation of document categories with distribution charts
-
-## 4. Used Cloud Services and Interfaces
-
-The platform leverages the following cloud services:
-
-1. **Supabase**:
-   - **Authentication**: User registration and login management
-   - **Database**: PostgreSQL database for document metadata storage
-   - **Storage**: Object storage for document files
-   - **Edge Functions**: Serverless functions for web scraping and processing
-
-2. **Vercel**:
-   - **Hosting**: Frontend application deployment
-   - **CI/CD Pipeline**: Automated build and deployment
-   - **CDN**: Global content delivery network
-   - **Analytics**: Usage and performance monitoring
-
-3. **Integration Services**:
-   - **PDF Processing**: PDF-lib for document manipulation
-   - **Word Processing**: Mammoth for DOCX/DOC conversion
-
-## 5. Implementation
-
-### Frontend Implementation
-
-The frontend is built using React with TypeScript, utilizing the Vite build tool for optimal developer experience and build performance. Key implementation details include:
-
-```tsx
-// Document Upload Component
-const DocumentUpload: React.FC = () => {
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  
-  const handleUpload = async () => {
-    setUploading(true);
-    try {
-      // Process each file
-      for (const file of files) {
-        // Extract metadata
-        const metadata = await extractMetadata(file);
-        
-        // Upload to Supabase storage
-        const { data, error } = await supabase.storage
-          .from('documents')
-          .upload(`${uuidv4()}-${file.name}`, file);
-          
-        if (error) throw error;
-        
-        // Store document record
-        await supabase.from('documents').insert({
-          name: file.name,
-          title: metadata.title,
-          size: file.size,
-          type: file.type,
-          file_path: data.path,
-        });
-      }
-    } catch (error) {
-      console.error('Error uploading:', error);
-    } finally {
-      setUploading(false);
-      setFiles([]);
-    }
-  };
-  
-  // Render upload interface
-  return (
-    // Upload interface implementation
-  );
-};
-```
-
-### Document Processing Implementation
-
-```typescript
-// Document Processing Utility
-export const processDocument = async (file: File): Promise<DocumentData> => {
-  const fileType = file.name.split('.').pop()?.toLowerCase();
-  let content = '';
-  
-  switch (fileType) {
-    case 'pdf':
-      content = await extractPdfContent(file);
-      break;
-    case 'docx':
-    case 'doc':
-      content = await extractWordContent(file);
-      break;
-    default:
-      throw new Error('Unsupported file type');
-  }
-  
-  // Extract metadata
-  const metadata = extractMetadata(content);
-  
-  // Classify document
-  const classification = classifyDocument(content, metadata);
-  
-  return {
-    content,
-    metadata,
-    classification,
-  };
-};
-```
-
-### Search Implementation
-
-```typescript
-// Search functionality
-export const searchDocuments = async (
-  query: string,
-  filters: SearchFilters
-): Promise<SearchResult[]> => {
-  // Tokenize search query
-  const tokens = tokenizeQuery(query);
-  
-  // Build SQL search conditions
-  let searchCondition = '';
-  if (tokens.length > 0) {
-    searchCondition = tokens.map(token => 
-      `content ILIKE '%${token}%' OR title ILIKE '%${token}%'`
-    ).join(' OR ');
-  }
-  
-  // Apply filters
-  let filterConditions = [];
-  if (filters.type) filterConditions.push(`type = '${filters.type}'`);
-  if (filters.classification) filterConditions.push(`classification = '${filters.classification}'`);
-  
-  // Execute search
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .or(searchCondition)
-    .and(filterConditions.join(' AND '));
-    
-  if (error) throw error;
-  
-  // Calculate relevance scores
-  return data.map(doc => ({
-    ...doc,
-    relevance_score: calculateRelevanceScore(doc, query)
-  }));
-};
-```
-
-## 6. Data
-
-The platform utilizes Supabase's PostgreSQL database for structured data storage with the following model:
-
-### Document Data Model
-
-- **documents**: Stores metadata and content for uploaded documents
-  - Primary identification (UUID)
-  - User ownership reference
-  - Document attributes (name, title, size, type)
-  - Content and classification data
-  - Temporal metadata (upload time, update time)
-
-### Storage Model
-
-Document files are stored in Supabase Storage buckets with the following structure:
-
-- **documents/**: Root bucket for all document files
-  - **{user_id}/**: Segregated by user for security
-    - **{document_id}-{filename}**: Individual document files
-
-### Security Implementation
-
-- Row Level Security (RLS) policies ensure users can only access their own documents
-- Storage bucket policies restrict file access based on user authentication
-- JWT-based authentication for secure API access
-
-## 7. The Used Cloud Platform
-
-### Supabase Platform Architecture
-
-Supabase provides a comprehensive Backend-as-a-Service platform with the following components:
-
-1. **PostgreSQL Database**:
-   - High-performance relational database
-   - Full-text search capabilities
-   - Real-time subscriptions
-   - Row-level security policies
-
-2. **Authentication Service**:
-   - User management
-   - Multiple auth providers
-   - JWT token handling
-   - Secure password storage
-
-3. **Storage Service**:
-   - S3-compatible object storage
-   - Public and private buckets
-   - Access control policies
-   - Image transformations
-
-4. **Edge Functions**:
-   - Deno-based serverless functions
-   - Globally distributed execution
-   - Low-latency responses
-   - Secure environment variables
-
-### Vercel Deployment Platform
-
-Vercel provides a seamless frontend deployment platform with:
-
-1. **Build System**:
-   - Optimized for modern JavaScript frameworks
-   - Automatic dependency installation
-   - Environment variable management
-
-2. **Edge Network**:
-   - Global CDN distribution
-   - Automatic SSL/TLS
-   - High-performance edge caching
-   - Instant cache invalidation
-
-## 8. Deployment on the Platform
-
-### Deployment Process
-
-The application deployment follows a streamlined process:
-
-1. **Code Repository Setup**:
-   - GitHub repository for version control
-   - Branch protection rules for main branch
-   - Pre-commit hooks for code quality
-
-2. **Supabase Configuration**:
-   - Database schema initialization
-   - RLS policy setup
-   - Storage bucket creation
-   - Edge function deployment
-
-3. **Vercel Deployment**:
-   - Connection to GitHub repository
-   - Build configuration:
-     ```
-     Framework Preset: Vite
-     Build Command: npm run build
-     Output Directory: dist
-     Install Command: npm install
-     ```
-   - Environment variable setup
-   - Domain configuration
-
-4. **Continuous Integration/Deployment**:
-   - Automatic builds on push to main branch
-   - Preview deployments for pull requests
-   - Rollback capability for failed deployments
-
-## 9. User Support
-
-### User Documentation
-
-#### Getting Started
-
-1. **Account Creation**:
-   - Navigate to the application URL
-   - Click "Sign Up" and enter your details
-   - Verify your email address
-
-2. **Document Upload**:
-   - Click "Upload" button on the dashboard
-   - Select files or drag and drop documents
-   - Wait for processing to complete
-
-3. **Searching Documents**:
-   - Use the search bar at the top of the interface
-   - Enter keywords related to your document
-   - Apply filters to narrow results
-
-4. **Document Classification**:
-   - Navigate to the Classification panel
-   - View automatic document categorization
-   - Manually adjust categories if needed
-
-#### Troubleshooting
-
-Common issues and their solutions are documented in the [Troubleshooting](#troubleshooting) section.
-
-### Source Code and Live Application
-
-- **Source Code**: [GitHub Repository](https://github.com/yourusername/cloud-docu-analyzer-nexus)
-- **Live Application**: [Cloud Document Analytics Platform](https://cloud-docu-analyzer-nexus.vercel.app)
-
-## 10. Conclusion
-
-The Cloud Document Analytics Platform demonstrates the power of modern cloud-native development for creating efficient document management and analysis systems. By leveraging serverless architecture and BaaS platforms like Supabase, the application achieves high performance, scalability, and security without requiring extensive backend infrastructure management.
-
-### Current Limitations
-
-- Document processing is limited to specific formats (PDF, DOC, DOCX)
-- Classification accuracy depends on document content quality
-- Web scraper may not handle all website structures efficiently
-- Storage limitations based on free-tier constraints
-
-### Future Enhancements
-
-1. **Enhanced AI Classification**:
-   - Integration with machine learning models for improved categorization
-   - Document similarity detection
-   - Content summarization
-
-2. **Advanced Analytics**:
-   - Sentiment analysis of document content
-   - Topic modeling and clustering
-   - Trend identification across document collections
-
-3. **Collaboration Features**:
-   - Document sharing capabilities
-   - Comment and annotation tools
-   - Version control for documents
-
-4. **Performance Optimizations**:
-   - Parallel processing for large document batches
-   - Caching strategies for frequently accessed content
-   - Progressive loading for large documents
-
-## References
-
-1. Supabase Documentation. (2023). *Authentication*. Retrieved from https://supabase.com/docs/guides/auth
-2. Vercel Documentation. (2023). *Deployment*. Retrieved from https://vercel.com/docs/concepts/deployments/overview
-3. React Documentation. (2023). *React Hooks*. Retrieved from https://reactjs.org/docs/hooks-intro.html
-4. Vite Documentation. (2023). *Features*. Retrieved from https://vitejs.dev/guide/features.html
-5. Mozilla Developer Network. (2023). *Using the Fetch API*. Retrieved from https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-6. PostgreSQL Documentation. (2023). *Full Text Search*. Retrieved from https://www.postgresql.org/docs/current/textsearch.html
+> **A modern, AI-powered platform for uploading, searching, classifying, and analyzing documents in the cloud.**
 
 ---
 
-**Made with ❤️ by Yousef M. Y. Al Sabbah**
+## 🚀 Live Demo
 
-*Islamic University of Gaza - Faculty of Information Technology*
+🌐 **Try it online now:** [Cloud Document Analytics Platform](https://cloud-based-document-analytics-serv.vercel.app/)
 
 ---
 
-*Last updated: June 5, 2025*
+## 📚 Table of Contents
+
+- [Features Overview](#features-overview)
+- [Feature Comparison Table](#feature-comparison-table)
+- [Screenshots](#screenshots)
+- [How It Works](#how-it-works)
+- [Installation & Setup](#installation--setup)
+- [Usage Guide](#usage-guide)
+- [Tech Stack](#tech-stack)
+- [Security](#security)
+- [Contributing](#contributing)
+- [License](#license)
+- [Credits](#credits)
+- [Project Requirements & Approach](#project-requirements--approach)
+- [Algorithms & Platform Choices](#algorithms--platform-choices)
+- [Documentation & Reporting](#documentation--reporting)
+
+---
+
+## ✨ Features Overview
+
+- **Drag-and-Drop Upload:** Upload PDF, DOC, DOCX, TXT, and more with a modern interface
+- **Web Scraping:** Extract and analyze content directly from web pages via URL
+- **AI-Powered Classification:** Automatic, explainable document categorization with multiple algorithms (AI, rule-based, hybrid)
+- **Advanced Search:** Full-text, fuzzy, and filtered search with instant results
+- **Analytics Dashboard:** Visualize document types, upload trends, and category distributions
+- **Secure Cloud Storage:** All files and metadata stored securely with Supabase
+- **User Authentication:** Secure sign-up, login, and access control
+- **Responsive UI:** Works beautifully on desktop and mobile
+- **Download & Delete:** Manage your documents with ease
+- **Explainable AI:** See why documents are classified a certain way
+- **Category Tree:** Hierarchical classification for academic, technical, business, and legal documents
+- **Real-Time Feedback:** Toasts and progress indicators for all actions
+- **Persistent Stats:** Track your document stats over time
+- **Role-Based Access:** Admin and user roles supported
+- **Live Demo:** Always-available online version for instant access
+
+---
+
+## 📊 Feature Comparison Table
+
+| Feature                        | Local Version | Online Demo | Description                                                                 |
+|------------------------------- |:------------:|:-----------:|-----------------------------------------------------------------------------|
+| Drag-and-Drop Upload           |      ✅      |     ✅      | Upload documents from your device                                           |
+| Web Scraping (URL Import)      |      ✅      |     ✅      | Import and analyze web pages                                                |
+| AI Classification              |      ✅      |     ✅      | Automatic, explainable document categorization                              |
+| Advanced Search                |      ✅      |     ✅      | Full-text, fuzzy, and filtered search                                       |
+| Analytics Dashboard            |      ✅      |     ✅      | Visualize document types, trends, and categories                            |
+| Secure Cloud Storage           |      ✅      |     ✅      | Files and metadata stored in Supabase                                       |
+| User Authentication            |      ✅      |     ✅      | Sign up, login, and access control                                          |
+| Download & Delete              |      ✅      |     ✅      | Manage your documents                                                      |
+| Explainable AI                 |      ✅      |     ✅      | See classification confidence and rationale                                 |
+| Category Tree                  |      ✅      |     ✅      | Hierarchical document classification                                        |
+| Real-Time Feedback             |      ✅      |     ✅      | Toasts, progress bars, and instant updates                                  |
+| Persistent Stats               |      ✅      |     ✅      | Track document stats over time                                              |
+| Role-Based Access              |      ✅      |     ✅      | Admin and user roles                                                        |
+| Mobile Responsive              |      ✅      |     ✅      | Works on all devices                                                        |
+| Live Demo                      |      ❌      |     ✅      | No setup required, use instantly online                                     |
+
+---
+
+## 📸 Screenshots
+
+> _Replace these with real screenshots if available_
+
+![Dashboard](https://via.placeholder.com/800x400/60A5FA/FFFFFF?text=Dashboard+Overview)
+![Upload](https://via.placeholder.com/800x400/2563EB/FFFFFF?text=Drag+%26+Drop+Upload)
+![Analytics](https://via.placeholder.com/800x400/1E40AF/FFFFFF?text=Analytics+Dashboard)
+![Classification](https://via.placeholder.com/800x400/0EA5E9/FFFFFF?text=AI+Classification+Panel)
+
+---
+
+## 🛠️ How It Works
+
+1. **Sign Up & Login:**
+   - Secure authentication with Supabase Auth
+   - Role-based access for users and admins
+2. **Upload Documents:**
+   - Drag and drop files or select from your device
+   - Supported formats: PDF, DOC, DOCX, TXT, XLSX, PPTX, images, and more
+   - Optionally, enter a URL to scrape and analyze web content
+3. **AI Classification:**
+   - Choose your preferred classification method (AI, rule-based, hybrid)
+   - Documents are categorized into Academic, Technical, Business, Legal, and subcategories
+   - Confidence scores and algorithm details are shown
+4. **Search & Filter:**
+   - Use the search bar to find documents by content, title, or metadata
+   - Apply filters by type, category, or upload date
+   - Sort results and view document details
+5. **Analytics Dashboard:**
+   - Visualize your document collection with bar, pie, and line charts
+   - See trends, type distributions, and category breakdowns
+6. **Manage Documents:**
+   - Download, delete, or view details for each document
+   - Real-time feedback for all actions
+
+---
+
+## 📦 Installation & Setup
+
+### 1. Clone the repository
+```bash
+git clone git@github.com:Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service.git
+cd Cloud-Based-Document-Analytics-Service
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+- Copy `.env.example` to `.env` and fill in your Supabase credentials
+
+### 4. Start the development server
+```bash
+npm run dev
+```
+
+### 5. Access the app
+- Open [http://localhost:5173](http://localhost:5173) in your browser
+
+---
+
+## 📝 Usage Guide
+
+### 1. **Sign Up & Login**
+- Create an account or log in securely
+
+### 2. **Upload Documents**
+- Drag and drop files or select from your device
+- Optionally, enter a URL to scrape and analyze web content
+- Choose your preferred classification method (AI, rule-based, hybrid)
+
+### 3. **Search & Filter**
+- Use the search bar to find documents by content, title, or metadata
+- Apply filters by type, category, or upload date
+
+### 4. **View & Manage**
+- Browse your documents in a sortable, filterable list
+- Download, delete, or view details for each document
+
+### 5. **Classification & Analytics**
+- See automatic document categorization with confidence scores
+- Explore analytics: document type distribution, upload trends, and more
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer      | Technology/Service                |
+|------------|-----------------------------------|
+| Frontend   | React, TypeScript, Vite           |
+| UI         | Shadcn/UI, Lucide Icons, Tailwind |
+| Backend    | Supabase (Postgres, Auth, Storage)|
+| AI/ML      | Custom & hybrid classification    |
+| Deployment | Vercel (CI/CD, CDN, Analytics)    |
+
+---
+
+## 🔒 Security
+- All data is protected with Supabase Auth and Row Level Security
+- Files are stored in user-specific buckets for privacy
+- Environment variables are required for all sensitive credentials
+- HTTPS enforced on the online demo
+- User actions are logged for auditability
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo and create your branch
+2. Make your changes and add tests if needed
+3. Open a pull request with a clear description
+4. Follow the code style and best practices
+
+---
+
+## 📄 License
+
+MIT License. See [LICENSE](./LICENSE) for details.
+
+---
+
+## 🙏 Credits
+
+- Developed by **Yousef M. Y. Al Sabbah**
+- Islamic University of Gaza - Faculty of Information Technology
+
+---
+
+## 📖 Project Requirements & Approach
+
+This project was developed as a cloud-based program for basic data analytics, document search, sorting, and classification. Below is a summary of the requirements and how they are addressed in this platform:
+
+### Requirements Addressed
+
+| Requirement                                                                 | How It Is Addressed                                                                                                   |
+|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| Collect a large number of PDF/Word documents                                | Upload via drag-and-drop, file picker, or web scraping from URLs.                                                     |
+| Store documents in the cloud                                                | Uses Supabase for secure, scalable cloud storage and database.                                                        |
+| Update collection anytime                                                   | Upload new documents or scrape new sources at any time via the interface.                                             |
+| Sort documents by title (extracted from document, not filename)             | Title extraction from document content; sorting and filtering in the UI.                                              |
+| Search documents for text/keywords                                          | Full-text and fuzzy search with instant results; highlights found keywords in document previews.                      |
+| Highlight search text in output documents                                   | Search results show highlighted keywords in context.                                                                  |
+| Classify documents by a predefined tree using any algorithm                 | Hierarchical classification tree (Academic, Technical, Business, Legal, etc.) with AI, rule-based, or hybrid methods.|
+| Provide statistics (size, number, search/sort/classify time, etc.)          | Analytics dashboard shows document count, size, upload trends, and operation timings.                                 |
+| Use any programming language and cloud platform                             | Built with React/TypeScript (frontend), Supabase (cloud backend), Vercel (deployment).                                |
+| Well-documented, readable, and maintainable source code                     | Modular, commented codebase; clear folder structure; usage and contribution guides in README.                         |
+| GitHub repository and cloud program link                                    | [GitHub Source Code](https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service) and [Live Demo](https://cloud-docu-analyzer-nexus.vercel.app) |
+| Write a report describing algorithms, platform, and usage                   | See below for a summary of algorithms and platform choices.                                                          |
+
+---
+
+## 🧠 Algorithms & Platform Choices
+
+- **Title Extraction:**
+  - Extracts the actual document title from PDF/Word content using custom parsing utilities.
+- **Sorting:**
+  - Sorts documents by extracted title, not just filename, for more meaningful organization.
+- **Search:**
+  - Supports keyword, phrase, and fuzzy search. Highlights found terms in document previews.
+- **Classification:**
+  - Uses a hybrid approach: combines AI/ML (e.g., text embeddings, TF-IDF) with rule-based logic for robust, explainable classification.
+  - Classification tree includes Academic, Technical, Business, Legal, and their subcategories.
+- **Analytics:**
+  - Tracks and displays statistics: document count, total size, upload/search/classification times, and trends over time.
+- **Cloud Platform:**
+  - Supabase for authentication, storage, and database; Vercel for deployment and CDN; React/TypeScript for frontend.
+
+---
+
+## 📑 Documentation & Reporting
+
+- The source code is fully documented and organized for easy understanding and extension.
+- This README serves as both a user and developer guide.
+- For a detailed report on algorithms, platform decisions, and usage, see the attached project report template (if provided by your instructor).
+- **GitHub Repository:** [https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service](https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service)
+- **Live Cloud Program:** [https://cloud-based-document-analytics-serv.vercel.app](https://cloud-based-document-analytics-serv.vercel.app)
+
+---
+
+_Last updated: June 8, 2025_

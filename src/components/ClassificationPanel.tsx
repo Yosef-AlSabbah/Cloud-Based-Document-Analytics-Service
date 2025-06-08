@@ -1,3 +1,8 @@
+// -------------------------------------------------------------
+// Cloud-Based-Document-Analytics-Service
+// Author: Yousef M. Y. Al Sabbah
+// https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service
+// -------------------------------------------------------------
 
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
@@ -103,7 +108,7 @@ export const ClassificationPanel = () => {
       confidence = 0.80;
     }
     // Business classification
-    else if (contentLower.includes('proposal') || contentLower.includes('business plan')) {
+    else if (contentLower.includes('proposal' || contentLower.includes('business plan')) {
       category = "Business";
       subcategory = "Proposals";
       confidence = 0.85;

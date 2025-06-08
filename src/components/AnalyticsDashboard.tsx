@@ -1,3 +1,8 @@
+// -------------------------------------------------------------
+// Cloud-Based-Document-Analytics-Service
+// Author: Yousef M. Y. Al Sabbah
+// https://github.com/Yosef-AlSabbah/Cloud-Based-Document-Analytics-Service
+// -------------------------------------------------------------
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
