@@ -71,17 +71,6 @@
 
 ---
 
-## 📸 Screenshots
-
-> _Replace these with real screenshots if available_
-
-![Dashboard](https://via.placeholder.com/800x400/60A5FA/FFFFFF?text=Dashboard+Overview)
-![Upload](https://via.placeholder.com/800x400/2563EB/FFFFFF?text=Drag+%26+Drop+Upload)
-![Analytics](https://via.placeholder.com/800x400/1E40AF/FFFFFF?text=Analytics+Dashboard)
-![Classification](https://via.placeholder.com/800x400/0EA5E9/FFFFFF?text=AI+Classification+Panel)
-
----
-
 ## 🛠️ How It Works
 
 1. **Sign Up & Login:**
